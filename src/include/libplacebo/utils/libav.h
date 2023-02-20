@@ -28,11 +28,6 @@ PL_API_BEGIN
 #include <libavutil/version.h>
 #include <libavcodec/avcodec.h>
 
-#if LIBAVUTIL_VERSION_INT >= AV_VERSION_INT(57, 16, 100)
-# define PL_HAVE_LAV_DOLBY_VISION
-# include <libavutil/dovi_meta.h>
-#endif
-
 #if LIBAVUTIL_VERSION_INT >= AV_VERSION_INT(56, 61, 100)
 # define PL_HAVE_LAV_FILM_GRAIN
 # include <libavutil/film_grain_params.h>

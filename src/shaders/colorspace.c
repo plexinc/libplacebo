@@ -299,12 +299,6 @@ void pl_shader_decode_color(pl_shader sh, struct pl_color_repr *repr,
              scale);
     }
 
-    if (repr->sys == PL_COLOR_SYSTEM_DOLBYVISION) {
-        ident_t scale = SH_FLOAT(pl_color_repr_normalize(repr));
-        GLSL("color.rgb *= vec3(%s); \n", scale);
-        pl_shader_dovi_reshape(sh, repr->dovi);
-    }
-
     enum pl_color_system orig_sys = repr->sys;
     struct pl_transform3x3 tr = pl_color_repr_decode(repr, params);
 
@@ -408,37 +402,7 @@ void pl_shader_decode_color(pl_shader sh, struct pl_color_repr *repr,
              HLG_A, HLG_B, HLG_C, sh_bvec(sh, 3));
         break;
 
-    case PL_COLOR_SYSTEM_DOLBYVISION:;
-        // Dolby Vision always outputs BT.2020-referred HPE LMS, so hard-code
-        // the inverse LMS->RGB matrix corresponding to this color space.
-        struct pl_matrix3x3 dovi_lms2rgb = {{
-            { 3.06441879, -2.16597676,  0.10155818},
-            {-0.65612108,  1.78554118, -0.12943749},
-            { 0.01736321, -0.04725154,  1.03004253},
-        }};
-
-        pl_matrix3x3_mul(&dovi_lms2rgb, &repr->dovi->linear);
-        ident_t mat = sh_var(sh, (struct pl_shader_var) {
-            .var = pl_var_mat3("lms2rgb"),
-            .data = PL_TRANSPOSE_3X3(dovi_lms2rgb.m),
-        });
-
-        // PQ EOTF
-        GLSL("color.rgb = pow(max(color.rgb, 0.0), vec3(1.0/%f));   \n"
-             "color.rgb = max(color.rgb - vec3(%f), 0.0)            \n"
-             "             / (vec3(%f) - vec3(%f) * color.rgb);     \n"
-             "color.rgb = pow(color.rgb, vec3(1.0/%f));             \n",
-             PQ_M2, PQ_C1, PQ_C2, PQ_C3, PQ_M1);
-        // LMS matrix
-        GLSL("color.rgb = %s * color.rgb; \n", mat);
-        // PQ OETF
-        GLSL("color.rgb = pow(max(color.rgb, 0.0), vec3(%f));       \n"
-             "color.rgb = (vec3(%f) + vec3(%f) * color.rgb)         \n"
-             "             / (vec3(1.0) + vec3(%f) * color.rgb);    \n"
-             "color.rgb = pow(color.rgb, vec3(%f));                 \n",
-             PQ_M1, PQ_C1, PQ_C2, PQ_C3, PQ_M2);
-        break;
-
+    case PL_COLOR_SYSTEM_DOLBYVISION:
     case PL_COLOR_SYSTEM_UNKNOWN:
     case PL_COLOR_SYSTEM_RGB:
     case PL_COLOR_SYSTEM_XYZ:
